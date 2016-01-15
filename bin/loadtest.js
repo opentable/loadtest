@@ -26,9 +26,12 @@ var options = stdio.getopt({
 	headers: {key: 'H', multiple: true, description: 'Send a header as header:value'},
 	postBody: {key: 'P', args: 1, description: 'Send string as POST body'},
 	postFile: {key: 'p', args: 1, description: 'Send the contents of the file as POST body'},
+	data: {args: 1, description: 'Send data POST body'},
+	method: {key: 'm', args: 1, description: 'method to url'},
 	putFile: {key: 'u', args: 1, description: 'Send the contents of the file as PUT body'},
 	requestGenerator: {key: 'R', args: 1, description: 'JS module with a custom request generator function'},
 	recover: {key: 'r', description: 'Do not exit on socket receive errors (default)'},
+	secureProtocol: {key: 's', args: 1, description: 'TLS/SSL secure protocol method to use'},
 	keepalive: {key: 'k', description: 'Use a keep-alive http agent'},
 	version: {key: 'V', description: 'Show version number and exit'},
 	rps: {args: 1, description: 'Specify the requests per second for each client'},
@@ -70,10 +73,22 @@ if (options.postBody)
 	options.method = 'POST';
 	options.body = options.postBody;
 }
-if(options.postFile)
+if (options.postFile)
 {
 	options.method = 'POST';
 	options.body = readBody(options.postFile, '-p');
+}
+if (options.data)
+{
+	options.body = JSON.parse(options.data);
+}
+if (options.method)
+{
+	var acceptedMethods = ['GET', 'POST', 'PUT', 'DELETE', 'get', 'post', 'put', 'delete'];
+	if (acceptedMethods.indexOf(options.method) === -1)
+	{
+		options.method = 'GET';
+	}
 }
 if(options.putFile)
 {

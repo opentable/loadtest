@@ -6,7 +6,7 @@
 
 # loadtest
 
-Runs a load test on the selected HTTP URL. The API allows for easy integration in your own tests.
+Runs a load test on the selected HTTP or WebSockets URL. The API allows for easy integration in your own tests.
 
 ## Installation
 
@@ -59,7 +59,7 @@ Run as a script to load test a URL:
 
     $ loadtest [-n requests] [-c concurrency] [-k] URL
 
-The URL can be "http://" or "https://".
+The URL can be "http://", "https://" or "ws://".
 Set the max number of requests with `-n`, and the desired level of concurrency with the `-c` parameter.
 Use keep-alive connections with `-k` whenever it makes sense,
 which should be always except when you are testing opening and closing connections.
@@ -165,6 +165,10 @@ If you want to send multiple values with a header, separate them with semicolons
 
     $ loadtest -H accept:text/plain;text-html ...
 
+Note: if you need to add a header with spaces, be sure to surround both header and value with quotes:
+
+    $ loadtest -H "Authorization: Basic xxx=="
+
 #### `-T content-type`
 
 Set the MIME content type for POST data. Default: `text/plain`.
@@ -172,6 +176,17 @@ Set the MIME content type for POST data. Default: `text/plain`.
 #### `-P POST-body`
 
 Send the string as the POST body. E.g.: `-P '{"key": "a9acf03f"}'`
+
+#### `-m method`
+
+Send method to link. Accept: [GET, POST, PUT, DELETE, get, post, put, delete], Default is GET
+E.g.: -m POST
+
+#### `--data POST some variables`
+
+Send some data. It does not support method GET. E.g: `--data '{"username": "test", "password": "test"}' -T 'application/x-www-form-urlencoded' -m POST`
+
+It required `-m` and `-T 'application/x-www-form-urlencoded'`
 
 #### `-p POST-file`
 
@@ -209,6 +224,14 @@ For an example function see above for `-p`.
 Recover from errors. Always active: loadtest does not stop on errors.
 After the tests are finished, if there were errors a report with all error codes will be shown.
 
+#### `-s`
+
+The TLS/SSL method to use. (e.g. TLSv1_method)
+
+Example:
+
+    $ loadtest -n 1000 -s TLSv1_method https://www.example.com
+
 #### `-V`
 
 Show version number and exit.
@@ -233,6 +256,8 @@ will send a total of 10 rps to the given URL, from 10 different clients
 Beware: if concurrency is too low then it is possible that there will not be enough clients
 to send all of the rps, adjust it with `-c` if needed.
 
+Note: --rps is not supported for websockets.
+
 #### `--timeout milliseconds`
 
 Timeout for each generated request in milliseconds.
@@ -247,7 +272,7 @@ Example request generator module could look like this:
 
 ```javascript
 module.exports = function(params, options, client, callback) {
-  generateMessageAsync(function(message)) {
+  generateMessageAsync(function(message) {
 
     if (message)
     {
@@ -369,7 +394,7 @@ Again erratic results. In fact if we leave the test running for 50 seconds we st
 
 Let us lower the rate to 500 rps:
 
-    $ loadtest http://localhost:7357/ -t 20 -c 10 --rps 5000
+    $ loadtest http://localhost:7357/ -t 20 -c 10 --rps 500
     ...
     Requests: 0, requests per second: 0, mean latency: 0 ms
     Requests: 2258, requests per second: 452, mean latency: 0 ms
@@ -416,7 +441,7 @@ The results (with the same test server) are impressive:
 
 Now you're talking! The steady rate also goes up to 2 krps:
 
-    $ loadtest http://localhost:7357/ -t 20 -c 10 --keepali --rps 2000
+    $ loadtest http://localhost:7357/ -t 20 -c 10 --keepalive --rps 2000
     ...
     Requests per second: 1950
 
@@ -567,19 +592,42 @@ will be:
 
 Allow invalid and self-signed certificates over https.
 
+#### `secureProtocol`
+
+The TLS/SSL method to use. (e.g. TLSv1_method)
+
+Example:
+
+    ```javascript
+    var loadtest = require('loadtest');
+
+    var options = {
+        url: 'https://www.example.com',
+        maxRequests: 100,
+        secureProtocol: 'TLSv1_method'
+    };
+
+    loadtest.loadTest(options, function(error) {
+        if (error) {
+            return console.error('Got an error: %s', error);
+        }
+        console.log('Tests run successfully');
+    });
+    ```
+
 #### `statusCallback`
 
 Allows the execution of an extra `statusCallback` function on every request operation completed, this will allow you 
 to know current test results while the test is still running. The results passed to the callback are in the same format 
-as the results passed to the final callback.
+as the results passed to the final callback. Also, a result object is passed as 
 
 Example:
 
 ```javascript
 var loadtest = require('loadtest');
 
-function statusCallback(result) {
-    console.log('Current Status: ' + require('util').inspect(result));
+function statusCallback(latency, result) {
+    console.log('Current latency %j, result %j', latency, result);
 }
 
 var options = {
@@ -598,7 +646,7 @@ loadtest.loadTest(options, function(error) {
 
 ### Results
 
-The results passed to your callback at the end of the load test contains a full set of data, including:
+The latency results passed to your callback at the end of the load test contains a full set of data, including:
 mean latency, number of errors and percentiles.
 An example follows:
 
@@ -619,6 +667,13 @@ An example follows:
         '0': 1,
         '500': 2
       }
+    }
+
+The second parameter contains info about the current request:
+
+    {
+        statusCode: 200,
+        body: '<html><body>hi</body></html>'
     }
     
 ### Start Test Server
