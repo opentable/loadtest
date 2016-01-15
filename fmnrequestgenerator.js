@@ -29,7 +29,7 @@ function sendPostRequest(options, client, callback) {
     //console.log('randomTag : %s, length : %d', randomTag, randomTag.length);
 
     var message = {
-        "DeliveryUrl": "http://mesos-slave7-qa-uswest2.qasql.opentable.com:31999",
+        "DeliveryUrl": "amqp://guest:guest@10.21.0.177:15672/%2f?exchange=HA-OT.Reservation.v1",
         "GiveupAfter": "",
         "DueAt": nearFuture,
         "MaxRetries": 5,
